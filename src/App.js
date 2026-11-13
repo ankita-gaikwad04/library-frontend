@@ -1,23 +1,27 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import AdminPortal from './components/AdminPortal';
+import StudentPortal from './components/StudentPortal';
+import './index.css';
 
 function App() {
+  const [role, setRole] = useState('admin');
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="logo">📚 Lib<span>Sys</span></div>
+        <div className="role-toggle">
+          <label>Portal View</label>
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="admin">👨‍💼 Admin Dashboard</option>
+            <option value="student">🎓 Student Portal</option>
+          </select>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        {role === 'admin' ? <AdminPortal /> : <StudentPortal />}
+      </main>
     </div>
   );
 }
