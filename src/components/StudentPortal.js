@@ -6,11 +6,11 @@ export default function StudentPortal() {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
-  const [aiQuery, setAiQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogin = async () => {
     try {
+      // Note: Update this URL if your Render URL is different
       const res = await fetch('https://library-app-1-rsp4.onrender.com/api/members/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -21,35 +21,32 @@ export default function StudentPortal() {
       
       const userData = await res.json();
       setUser(userData);
+      
       const booksData = await api.getBooks();
-      if (Array.isArray(booksData)) setBooks(booksData);
+      if (Array.isArray(booksData)) {
+        setBooks(booksData);
+        setSearchResults(booksData); // Show all books initially
+      }
       
     } catch (err) {
       alert("Login failed. Check your email.");
     }
   };
 
-  const handleAiSearch = async () => {
-    if (!aiQuery) return;
-    setLoading(true);
-    try {
-      const res = await fetch('https://library-app-1-rsp4.onrender.com/api/ai/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: aiQuery })
-      });
-      const data = await res.json();
-      
-      const keywords = data.keywords.toLowerCase().split(' ');
-      const filtered = books.filter(b => {
-        const text = `${b.book_name} ${b.author}`.toLowerCase();
-        return keywords.some(k => text.includes(k));
-      });
-      setSearchResults(filtered);
-    } catch (err) {
-      alert("AI Search failed. Wait 60 seconds and try again.");
+  // Local Search Logic (Replaces the AI API call)
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults(books); // Show all if empty
+      return;
     }
-    setLoading(false);
+
+    const lowerQuery = query.toLowerCase();
+    const filtered = books.filter(b => 
+      b.book_name.toLowerCase().includes(lowerQuery) || 
+      b.author.toLowerCase().includes(lowerQuery)
+    );
+    setSearchResults(filtered);
   };
 
   if (!user) {
@@ -68,24 +65,35 @@ export default function StudentPortal() {
     <div>
       <div className="page-header">
         <h1>Welcome, {user.name} 👋</h1>
-        <p>Browse the catalog or use our Gemini AI to find exactly what you need.</p>
+        <p>Browse the catalog to find your next read.</p>
       </div>
 
-      <div className="form-card" style={{ display: 'flex', gap: '16px', background: 'linear-gradient(to right, #ffffff, #fff7ed)', border: '1px solid #fed7aa' }}>
-        <input type="text" placeholder="Ask AI: 'I want a book about programming'" value={aiQuery} onChange={e => setAiQuery(e.target.value)} style={{ marginBottom: 0 }} />
-        <button className="btn-primary" style={{ width: '200px', background: 'linear-gradient(to right, #e67e22, #d35400)' }} onClick={handleAiSearch} disabled={loading}>
-          {loading ? '✨ Thinking...' : '✨ AI Search'}
-        </button>
+      {/* Standard Search Bar (Replaces AI UI) */}
+      <div className="form-card" style={{ display: 'flex', gap: '16px' }}>
+        <input 
+          type="text" 
+          placeholder="Search by book title or author..." 
+          value={searchQuery} 
+          onChange={e => handleSearch(e.target.value)} 
+          style={{ marginBottom: 0 }} 
+        />
       </div>
 
+      {/* Book Grid */}
       <div className="grid-container">
-        {(searchResults.length > 0 ? searchResults : books).map(b => (
-          <div key={b.book_id} className="card">
-            <h4>{b.book_name}</h4>
-            <p>By {b.author}</p>
-            <span className="badge badge-available">Available ({b.quantity})</span>
-          </div>
-        ))}
+        {searchResults.length > 0 ? (
+          searchResults.map(b => (
+            <div key={b.book_id} className="card">
+              <h4>{b.book_name}</h4>
+              <p>By {b.author}</p>
+              <span className="badge badge-available">Available ({b.quantity})</span>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: '#64748b', gridColumn: '1 / -1', textAlign: 'center', padding: '40px' }}>
+            No books found matching "{searchQuery}"
+          </p>
+        )}
       </div>
     </div>
   );
