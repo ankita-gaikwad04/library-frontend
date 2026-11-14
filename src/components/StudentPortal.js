@@ -7,11 +7,13 @@ export default function StudentPortal() {
   const [books, setBooks] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  const API_BASE = 'https://library-app-1-rsp4.onrender.com/api';
 
   const handleLogin = async () => {
     try {
-      // Note: Update this URL if your Render URL is different
-      const res = await fetch('https://library-app-1-rsp4.onrender.com/api/members/login', {
+      const res = await fetch(`${API_BASE}/members/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -33,20 +35,39 @@ export default function StudentPortal() {
     }
   };
 
-  // Local Search Logic (Replaces the AI API call)
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (!query.trim()) {
-      setSearchResults(books); // Show all if empty
+  // New search function triggered by the form submit
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault(); // Prevents the page from refreshing
+    
+    if (!searchQuery.trim()) {
+      setSearchResults(books); 
       return;
     }
 
-    const lowerQuery = query.toLowerCase();
-    const filtered = books.filter(b => 
-      b.book_name.toLowerCase().includes(lowerQuery) || 
-      b.author.toLowerCase().includes(lowerQuery)
-    );
-    setSearchResults(filtered);
+    setIsSearching(true);
+    try {
+      const res = await fetch(`${API_BASE}/books/rag-search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery })
+      });
+      
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSearchResults(data);
+      }
+    } catch (err) {
+      console.error("RAG search failed", err);
+      alert("Search failed. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Clears the search and shows all books again
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSearchResults(books);
   };
 
   if (!user) {
@@ -65,28 +86,48 @@ export default function StudentPortal() {
     <div>
       <div className="page-header">
         <h1>Welcome, {user.name} 👋</h1>
-        <p>Browse the catalog to find your next read.</p>
+        <p>Use our AI-powered semantic search to find exactly what you need.</p>
       </div>
 
-      {/* Standard Search Bar (Replaces AI UI) */}
-      <div className="form-card" style={{ display: 'flex', gap: '16px' }}>
+      {/* RAG Search Form */}
+      <form onSubmit={handleSearchSubmit} className="form-card" style={{ display: 'flex', gap: '16px', background: 'linear-gradient(to right, #ffffff, #f8fafc)', border: '1px solid #e2e8f0' }}>
         <input 
           type="text" 
-          placeholder="Search by book title or author..." 
+          placeholder="Try asking: 'I want to learn about object-oriented programming'..." 
           value={searchQuery} 
-          onChange={e => handleSearch(e.target.value)} 
+          onChange={e => setSearchQuery(e.target.value)} 
           style={{ marginBottom: 0 }} 
         />
-      </div>
+        <button type="submit" className="btn-primary" style={{ width: '150px', background: 'var(--accent)' }} disabled={isSearching}>
+          {isSearching ? 'Searching...' : 'Search'}
+        </button>
+        {searchQuery && (
+          <button type="button" onClick={handleClearSearch} className="btn-primary" style={{ width: '100px', background: '#64748b' }}>
+            Clear
+          </button>
+        )}
+      </form>
+
+      {isSearching && <p style={{ color: '#64748b', marginBottom: '20px' }}>🧠 Searching knowledge base...</p>}
 
       {/* Book Grid */}
       <div className="grid-container">
         {searchResults.length > 0 ? (
           searchResults.map(b => (
-            <div key={b.book_id} className="card">
+            <div key={b.book_id} className="card" style={{ borderTop: '4px solid #e67e22' }}>
               <h4>{b.book_name}</h4>
               <p>By {b.author}</p>
-              <span className="badge badge-available">Available ({b.quantity})</span>
+              
+              {/* Show description if it exists */}
+              {b.description && (
+                <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '10px', fontStyle: 'italic' }}>
+                  "{b.description}"
+                </p>
+              )}
+              
+              <span className="badge badge-available" style={{ marginTop: 'auto' }}>
+                Available ({b.quantity})
+              </span>
             </div>
           ))
         ) : (
